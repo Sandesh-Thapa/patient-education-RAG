@@ -25,3 +25,11 @@ Update .env file accordingly
 ```python
 python .\rag\load_to_vector_store.py 
 ```
+
+---
+
+## Run API
+
+```python
+uvicorn api.main:app --reload
+```
