@@ -2,6 +2,8 @@ import os
 from dotenv import load_dotenv
 from groq import Groq
 from rag.vector_db import get_vector_db_index
+from api.database.models import Chat, RoleEnum
+from api.database.config import chat_collection
 
 load_dotenv()
 
@@ -23,7 +25,8 @@ def retrieve_context(query):
 
     return context
 
-def chat_with_groq(query):
+
+def chat_with_groq(query, history, thread_id):
     chat_history = [
         {
             "role": "system",
@@ -34,6 +37,7 @@ def chat_with_groq(query):
             )
         }
     ]
+    chat_history += [{"role": chat["role"], "content": chat["message"]} for chat in history]
     context = retrieve_context(query)
 
     chat_history.append({
@@ -41,11 +45,23 @@ def chat_with_groq(query):
         "content": f"Context:\n{context}\n\nQuestion: {query}"
     })
 
-    response = client.chat.completions.create(
+    stream = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=chat_history,
         temperature=0.3,
+        stream=True
     )
-    reply = response.choices[0].message.content
-    
-    return reply
+    full_reply = ""
+    for chunk in stream:
+        delta = chunk.choices[0].delta
+        if delta and delta.content:
+            content = delta.content
+            full_reply += content
+            yield content
+
+    assistant_result = Chat(
+        thread_id=thread_id,
+        message=full_reply,
+        role=RoleEnum.assistant
+    )
+    chat_collection.insert_one(assistant_result.model_dump())
