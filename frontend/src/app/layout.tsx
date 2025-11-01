@@ -3,7 +3,6 @@ import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/Sidebar";
-import Navbar from "@/components/Navbar";
 
 const openSans = Open_Sans({
   variable: "--font-open-sans",
@@ -28,7 +27,6 @@ export default function RootLayout({
         <SidebarProvider>
           <AppSidebar />
           <main className="w-full">
-            <Navbar />
             {children}
           </main>
         </SidebarProvider>

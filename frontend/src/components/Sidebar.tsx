@@ -64,7 +64,7 @@ export function AppSidebar() {
                     chatHistory.map((chat) => (
                       <Link
                         key={chat.id}
-                        href={`/chat/${chat.id}`}
+                        href={`/c/${chat.id}`}
                         className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       >
                         <MessageCircle className="w-4 h-4 shrink-0" />
