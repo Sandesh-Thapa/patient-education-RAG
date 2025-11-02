@@ -1,4 +1,4 @@
-import pymongo
+import pymongo, json
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -35,8 +35,13 @@ def chat(query: Query):
     )
     chat_collection.insert_one(user_query.model_dump())
 
-    def generate():
-        for chunk in chat_with_groq(query.q, chat_history, query.thread_id):
-            yield chunk
+    def event_stream():
+        try:
+            for chunk in chat_with_groq(query.q, chat_history, query.thread_id):
+                yield f"data: {json.dumps({'message': chunk})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        finally:
+            yield "event: end\ndata: [DONE]\n\n"
 
-    return StreamingResponse(generate(), media_type="text/plain")
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
