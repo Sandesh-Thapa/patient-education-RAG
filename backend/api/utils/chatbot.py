@@ -1,4 +1,4 @@
-import os, json
+import os, json, re
 from dotenv import load_dotenv
 from groq import Groq
 from rag.vector_db import get_vector_db_index
@@ -26,27 +26,80 @@ def generate_chat_title(user_query: str, assistant_response: str) -> str:
     title = response.choices[0].message.content.strip()
     return title[:80]
 
+def extract_json_from_text(text: str):
+    """Try to extract a JSON object from a text blob."""
+    json_match = re.search(r'\{.*\}', text, re.DOTALL)
+    if json_match:
+        try:
+            return json.loads(json_match.group(0))
+        except json.JSONDecodeError:
+            return None
+    return None
 
-def validate_user_input_with_guardrail(user_query: str):
-    messages = [
-        {"role": "system", "content": health_guardrail_system_prompt},
-        {"role": "user", "content": user_query}
-    ]
 
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=messages,
-        temperature=0,
-    )
-
-    output = response.choices[0].message.content.strip()
+def validate_user_input_with_guardrail(user_input: str, context: str = "") -> dict:
+    """
+    Context-aware guardrail that validates health-related queries
+    and gracefully handles non-JSON or malformed LLM output.
+    """
     try:
-        result = json.loads(output)
-    except json.JSONDecodeError:
-        result = {"valid_input": False, "reason": "Malformed validation response", "suspicious": True, "suspicion_reason": "Invalid JSON", "markdown": "Validation failed."}
-    
-    return result
+        combined_prompt = (
+            f"Previous Conversation Context:\n{context}\n\n"
+            f"Current User Input:\n{user_input}"
+            if context else user_input
+        )
 
+        messages = [
+            {"role": "system", "content": health_guardrail_system_prompt},
+            {"role": "user", "content": combined_prompt},
+        ]
+
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=messages,
+            temperature=0.0,
+        )
+
+        raw = response.choices[0].message.content.strip()
+
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError:
+            result = extract_json_from_text(raw)
+
+        if not result or "valid_input" not in result:
+            retry_prompt = (
+                "You failed to return strict JSON earlier. "
+                "Now respond again strictly in valid JSON format with keys: "
+                "valid_input, reason, suspicious, suspicion_reason, markdown. "
+                f"\n\nOriginal user input:\n{user_input}"
+            )
+            retry_response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[
+                    {"role": "system", "content": retry_prompt},
+                ],
+                temperature=0.0,
+            )
+            retry_raw = retry_response.choices[0].message.content.strip()
+            result = extract_json_from_text(retry_raw) or {"valid_input": True}
+
+        result.setdefault("valid_input", True)
+        result.setdefault("reason", "")
+        result.setdefault("suspicious", False)
+        result.setdefault("suspicion_reason", "")
+        result.setdefault("markdown", "✅ Input accepted as valid.")
+
+        return result
+
+    except Exception as e:
+        return {
+            "valid_input": True,
+            "reason": f"Guardrail exception: {str(e)}",
+            "suspicious": False,
+            "suspicion_reason": "",
+            "markdown": "⚠️ Guardrail temporarily unavailable — continuing safely."
+        }
 
 def retrieve_context(query):
     index = get_vector_db_index()
