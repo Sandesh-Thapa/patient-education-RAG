@@ -6,6 +6,7 @@ load_dotenv()
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
+PINECONE_HOST_NAME = os.getenv("PINECONE_INDEX_HOST")
 
 def get_vector_db_index():
     db = Pinecone(api_key=PINECONE_API_KEY)
@@ -21,4 +22,4 @@ def get_vector_db_index():
             }
         )
 
-    return db.Index(PINECONE_INDEX_NAME)
+    return db.Index(name=PINECONE_INDEX_NAME, host=PINECONE_HOST_NAME)

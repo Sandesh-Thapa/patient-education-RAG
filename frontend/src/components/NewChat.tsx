@@ -10,6 +10,8 @@ import {
     BookOpen,
 } from "lucide-react";
 import MarkdownPreview from '@uiw/react-markdown-preview';
+import { v4 as uuidv4 } from 'uuid';
+
 import ChatForm from "./ChatForm"
 import Navbar from "./Navbar";
 import { ChatMessage } from "@/types/chat";
@@ -67,12 +69,12 @@ const NewChat = () => {
             value: "Learn about wellness topics and mental health tips.",
         },
     ];
+    const threadId = uuidv4();
 
     const sendMessage = async (e: FormEvent<HTMLFormElement> | undefined) => {
         e?.preventDefault()
         if (!input.trim()) return
 
-        const threadId = "threadId1234"
         setChats((prev) => [
             ...prev,
             { role: "user", message: input },
@@ -80,7 +82,7 @@ const NewChat = () => {
         ])
         setInput("")
 
-        const response = await fetch("http://localhost:8000/chat", {
+        const response = await fetch("http://localhost:8000/new-chat", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

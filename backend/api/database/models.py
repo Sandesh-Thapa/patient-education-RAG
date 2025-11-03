@@ -11,3 +11,8 @@ class Chat(BaseModel):
     message: str
     role: RoleEnum
     createdDt: int = int(datetime.timestamp(datetime.now()))
+
+class Conversation(BaseModel):
+    thread_id: str
+    title: str
+    createdDt: int = int(datetime.timestamp(datetime.now()))

@@ -9,3 +9,4 @@ uri = f"mongodb+srv://{os.getenv("MONGODB_USER", "")}:{os.getenv("MONGODB_PASSWO
 client = MongoClient(uri, server_api=ServerApi('1'))
 db = client.medical_rag
 chat_collection = db["chats"]
+conversation_collection = db["conversations"]
