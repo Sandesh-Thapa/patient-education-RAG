@@ -12,19 +12,17 @@ import {
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { MessageSquarePlus, MessageCircle } from "lucide-react";
 import Logo from "./Logo";
+import { useState, useEffect } from "react";
 
 export function AppSidebar() {
-  const chatHistory = [
-    { id: 1, title: "Nutrition advice for diabetes" },
-    { id: 2, title: "WHO malaria prevention" },
-    { id: 3, title: "Emergency response steps" },
-    { id: 4, title: "Nutrition advice for diabetes" },
-    { id: 5, title: "WHO malaria prevention" },
-    { id: 6, title: "Emergency response steps" },
-    { id: 7, title: "Nutrition advice for diabetes" },
-    { id: 8, title: "WHO malaria prevention" },
-    { id: 9, title: "Emergency response steps" },
-  ];
+  const [chatHistory, setChatHistory] = useState<{thread_id: string, title: string}[]>([]);
+
+  useEffect(() => {
+    fetch("http://localhost:8000/chats")
+      .then(res => res.json())
+      .then(data => setChatHistory(data.chats))
+      .catch(err => console.log(err))
+  }, [])
 
   return (
     <Sidebar>
@@ -63,8 +61,8 @@ export function AppSidebar() {
                   {chatHistory.length > 0 ? (
                     chatHistory.map((chat) => (
                       <Link
-                        key={chat.id}
-                        href={`/c/${chat.id}`}
+                        key={chat.thread_id}
+                        href={`/c/${chat.thread_id}`}
                         className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       >
                         <MessageCircle className="w-4 h-4 shrink-0" />

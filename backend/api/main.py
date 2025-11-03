@@ -99,3 +99,22 @@ def chat(query: Query):
             yield "event: end\ndata: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.get("/chats")
+def get_chat_list():
+        conversations = (
+            conversation_collection
+            .find({}, {"_id": 0, "thread_id": 1, "title": 1, "createdDt": 1})
+            .sort("createdDt", pymongo.DESCENDING)
+        )
+        return {"chats": list(conversations)}
+
+
+@app.get("/chat/{thread_id}")
+def get_chat_conversation(thread_id: str):
+    chat_history = (chat_collection
+        .find({"thread_id": thread_id}, {"_id": 0})
+        .sort({"createdDt": pymongo.ASCENDING})
+    )
+    return {"chat_history": list(chat_history)}
