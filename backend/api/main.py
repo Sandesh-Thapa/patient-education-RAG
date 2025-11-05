@@ -1,10 +1,10 @@
 import json
 import pymongo
-from datetime import datetime
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
+from pymongo import MongoClient
 
 from .utils.chatbot import (
     chat_with_groq,
@@ -71,7 +71,7 @@ def new_chat(query: Query):
                 title=title
             ).model_dump())
 
-            yield f"data: {json.dumps({'title': title})}\n\n"
+            yield f"data: {json.dumps({'title': title, 'status': 'saved'})}\n\n"
 
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -136,3 +136,32 @@ def get_chat_conversation(thread_id: str):
         .sort("createdDt", pymongo.ASCENDING)
     )
     return {"chat_history": chat_history}
+
+
+@app.delete("/chat/{thread_id}")
+async def delete_chat(thread_id: str):
+    try:
+        client: MongoClient = chat_collection.database.client
+
+        with client.start_session() as session:
+            with session.start_transaction():
+                deleted_history = chat_collection.delete_many(
+                    {"thread_id": thread_id}, session=session
+                )
+                deleted_conversation = conversation_collection.delete_one(
+                    {"thread_id": thread_id}, session=session
+                )
+
+                if deleted_history.deleted_count == 0 and deleted_conversation.deleted_count == 0:
+                    raise HTTPException(status_code=404, detail="Chat not found.")
+
+        return {
+            "message": "Chat deleted successfully",
+            "deleted_messages": deleted_history.deleted_count,
+            "deleted_conversation": deleted_conversation.deleted_count,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transaction failed: {str(e)}")

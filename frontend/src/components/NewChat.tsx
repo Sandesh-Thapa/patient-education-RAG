@@ -15,6 +15,7 @@ import ChatForm from "./ChatForm"
 import Navbar from "./Navbar";
 import { ChatMessage } from "@/types/chat";
 import ChatHistory from "./ChatHistory";
+import { useRouter } from "next/navigation";
 
 const NewChat = () => {
     const [input, setInput] = useState("")
@@ -70,6 +71,7 @@ const NewChat = () => {
         },
     ];
     const threadId = uuidv4();
+    const router = useRouter()
 
     const sendMessage = async (e: FormEvent<HTMLFormElement> | undefined) => {
         e?.preventDefault()
@@ -93,12 +95,18 @@ const NewChat = () => {
         const reader = response.body?.getReader()
         const decoder = new TextDecoder()
         let botMessage = ""
+        let shouldNavigate = false
 
         if (!reader) return
 
         while (true) {
             const { done, value } = await reader.read()
-            if (done) break
+            if (done) {
+                if (shouldNavigate) {
+                    router.push(`/c/${threadId}`)
+                }
+                break
+            }
 
             const chunk = decoder.decode(value, { stream: true })
             const lines = chunk.split("\n\n").filter(Boolean)
@@ -109,12 +117,15 @@ const NewChat = () => {
                     if (dataStr === "[DONE]") continue
                     try {
                         const json = JSON.parse(dataStr)
+                        if (json.status === "saved") {
+                            shouldNavigate = true
+                        }
                         botMessage += json.message
                         setChats((prev) => {
                             const updated = [...prev]
                             updated[updated.length - 1] = {
-                            role: "assistant",
-                            message: botMessage,
+                                role: "assistant",
+                                message: botMessage,
                             }
                             return updated
                         })
@@ -129,52 +140,54 @@ const NewChat = () => {
 
     return (
         <>
-            <Navbar />
+            <Navbar chatTitle="New Chat" />
             <div className="mx-auto flex w-full flex-col justify-center px-2 pb-2 transition-all duration-700 max-w-3xl flex-1 h-fit mt-16">
                 {chats.length < 1 ?
-                <>
-                    <div className="flex flex-col items-center justify-center pb-4 text-center">
-                        <h1 className="mb-6 text-3xl font-bold">What can I help with?</h1>
-                        <div className="grid w-full auto-rows-min gap-4 md:grid-cols-3">
-                            {healthPrompts.map((prompt, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => setInput(prompt.value)}
-                                    className={`flex cursor-pointer flex-col gap-2 rounded-xl border p-4 text-left transition-colors ${prompt.colorClass}`}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        {prompt.icon}
-                                        <h3 className="font-semibold">{prompt.title}</h3>
-                                    </div>
-                                    <p className="text-sm opacity-50">{prompt.description}</p>
-                                </button>
-                            ))}
+                    <>
+                        <div className="flex flex-col items-center justify-center pb-4 text-center">
+                            <h1 className="mb-6 text-3xl font-bold">What can I help with?</h1>
+                            <div className="grid w-full auto-rows-min gap-4 md:grid-cols-3">
+                                {healthPrompts.map((prompt, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setInput(prompt.value)}
+                                        className={`flex cursor-pointer flex-col gap-2 rounded-xl border p-4 text-left transition-colors ${prompt.colorClass}`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {prompt.icon}
+                                            <h3 className="font-semibold">{prompt.title}</h3>
+                                        </div>
+                                        <p className="text-sm opacity-50">{prompt.description}</p>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                    <div className='rounded-4xl border border-gray-200 shadow bg-white p-3'>
-                        <ChatForm
-                            input={input}
-                            onChange={(value: string) => setInput(value)}
-                            onSubmit={(e) => sendMessage(e)}
-                        />
-                    </div>
-                </> : 
-                <>
-                    <ChatHistory chats={chats} />
-                    <div
-                        className='
-                        fixed bottom-3 mx-auto p-3
-                        w-full md:w-[80%] xl:w-[60%] 2xl:w-[960px]
-                        rounded-4xl border border-gray-200 shadow bg-white
-                        '
-                    >
-                        <ChatForm
-                            input={input}
-                            onChange={(value: string) => setInput(value)}
-                            onSubmit={(e) => sendMessage(e)}
-                        />
-                    </div>
-                </>
+                        <div className='rounded-4xl border border-gray-200 shadow bg-white p-3'>
+                            <ChatForm
+                                input={input}
+                                onChange={(value: string) => setInput(value)}
+                                onSubmit={(e) => sendMessage(e)}
+                            />
+                        </div>
+                    </> :
+                    <>
+                        <ChatHistory chats={chats} />
+                        <div
+                            className="
+                                fixed bottom-3 mx-auto p-3
+                                w-full md:w-[80%] xl:w-[60%] 2xl:w-[960px]
+                                rounded-4xl border shadow transition-colors
+                                bg-white border-gray-200
+                                dark:bg-gray-900 dark:border-gray-700
+                            "
+                        >
+                            <ChatForm
+                                input={input}
+                                onChange={(value: string) => setInput(value)}
+                                onSubmit={(e) => sendMessage(e)}
+                            />
+                        </div>
+                    </>
                 }
             </div>
         </>

@@ -19,7 +19,7 @@ const ChatForm = ({input, onChange, onSubmit}: ChatFormProps) => {
             <TextareaAutosize
                 onHeightChange={(height) => setIsMultilineInput(height > 40)}
                 maxRows={8}
-                className="p-2 w-full resize-none rounded focus:outline-none focus:ring-0 focus:border-gray-400"
+                className="p-2 w-full resize-none rounded focus:outline-none focus:ring-0 focus:border-gray-400 dark:bg-gray-900 dark:border-gray-700"
                 value={input}
                 placeholder='Ask anything'
                 onChange={(e) => onChange(e.target.value)}
